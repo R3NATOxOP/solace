@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 import { getServerSession } from "next-auth"
 import { authOptions, hasAnyStaffAccess } from "@/lib/auth"
 import { sendDirectMessage, notifyApplicationStatusChanged, notifyPublicApplicationResponse } from '@/lib/discord-bot'
 import { logActivity } from '@/lib/activity-log'
 import { sendEmail, generateApplicationStatusEmail } from '@/lib/email'
 import type { Application } from '@/lib/types'
-
+import { dbReadFile as readFile, dbWriteFile as writeFile } from '@/lib/db'
+import path from 'path'
 
 const dataFilePath = path.join(process.cwd(), 'data', 'applications.json')
 const archiveFilePath = path.join(process.cwd(), 'data', 'archived_applications.json')
@@ -26,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params
     const { status, reason } = await req.json()
 
-    const data = await fs.readFile(dataFilePath, 'utf8')
+    const data = await readFile(dataFilePath)
     const applications: Application[] = JSON.parse(data)
 
     const applicationIndex = applications.findIndex((app) => app.id === id)
@@ -44,17 +43,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     }
 
     applications.splice(applicationIndex, 1)
-    await fs.writeFile(dataFilePath, JSON.stringify(applications, null, 2))
+    await writeFile(dataFilePath, JSON.stringify(applications, null, 2))
 
     let archivedApplications: Application[] = []
     try {
-      const archivedData = await fs.readFile(archiveFilePath, 'utf8')
+      const archivedData = await readFile(archiveFilePath)
       archivedApplications = JSON.parse(archivedData)
     } catch {
-      console.log('No existing archive file, creating a new one')
+      console.log('No existing archive file, starting with empty array')
     }
     archivedApplications.push(updatedApplication)
-    await fs.writeFile(archiveFilePath, JSON.stringify(archivedApplications, null, 2))
+    await writeFile(archiveFilePath, JSON.stringify(archivedApplications, null, 2))
 
     // Log activity
     await logActivity({
@@ -79,7 +78,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       const notificationsFilePath = path.join(process.cwd(), 'data', 'notifications.json')
       let notifications: any[] = []
       try {
-        const notifData = await fs.readFile(notificationsFilePath, 'utf8')
+        const notifData = await readFile(notificationsFilePath)
         notifications = JSON.parse(notifData)
       } catch {
         notifications = []
@@ -120,7 +119,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         read: false
       })
 
-      await fs.writeFile(notificationsFilePath, JSON.stringify(notifications, null, 2))
+      await writeFile(notificationsFilePath, JSON.stringify(notifications, null, 2))
     } catch (error) {
       console.error('Failed to create admin notification:', error)
     }
@@ -167,4 +166,3 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: 'Failed to update application' }, { status: 500 })
   }
 }
-

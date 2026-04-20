@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 import { getServerSession } from "next-auth"
 import { authOptions, hasAnyStaffAccess } from '@/lib/auth'
+import { dbReadFile as readFile, dbWriteFile as writeFile } from '@/lib/db'
+import path from 'path'
 
 const archiveFilePath = path.join(process.cwd(), 'data', 'archived_applications.json')
 
@@ -17,18 +17,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
-    const dataDir = path.join(process.cwd(), 'data')
     try {
-      await fs.access(dataDir)
-    } catch {
-      await fs.mkdir(dataDir, { recursive: true })
-    }
-
-    try {
-      const data = await fs.readFile(archiveFilePath, 'utf8')
+      const data = await readFile(archiveFilePath)
       return NextResponse.json(JSON.parse(data))
     } catch {
-      await fs.writeFile(archiveFilePath, '[]', 'utf8')
+      await writeFile(archiveFilePath, '[]')
       return NextResponse.json([])
     }
   } catch (error) {
@@ -36,4 +29,3 @@ export async function GET() {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 })
   }
 }
-
