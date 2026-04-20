@@ -173,8 +173,15 @@ export default function ApplicationTypesPage() {
                       <div className="sm:col-span-9">
                         <label className="text-xs font-medium mb-1 block">Options (comma-separated)</label>
                         <Input
-                          value={(f.options || []).join(', ')}
-                          onChange={e => updateField(idx, { options: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
+                          value={(f.options || []).join(',')}
+                          onChange={e => updateField(idx, { options: e.target.value.split(',') })}
+                          onBlur={e => {
+                            // Clean up on blur: trim whitespace and remove empty options
+                            const cleaned = (f.options || [])
+                              .map(s => s.trim())
+                              .filter(Boolean);
+                            updateField(idx, { options: cleaned });
+                          }}
                           placeholder="Option 1, Option 2"
                         />
                       </div>
