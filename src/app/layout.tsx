@@ -17,7 +17,12 @@ const oswald = Oswald({
 export const metadata: Metadata = {
   title: applicationConfig.website.metaTitle,
   description: applicationConfig.website.metaDescription,
+  icons: {
+    icon: applicationConfig.website.serverLogo,
+    apple: applicationConfig.website.serverLogo,
+  },
 }
+
 
 // Initialize data files on server startup
 if (typeof window === 'undefined') {
