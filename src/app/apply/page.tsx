@@ -113,27 +113,7 @@ export default function ApplyPage() {
       </div>
 
       {/* Main Content */}
-      <main className="relative z-10 max-w-7xl mx-auto px-6 md:px-10 pt-32 pb-40">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="mb-20"
-        >
-          <div className="flex flex-col">
-            <span className="text-blue-400 text-xs font-black uppercase tracking-[0.4em] mb-4">
-              Recruitment Protocol
-            </span>
-            <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] uppercase text-white mb-8">
-              Initialize <br />
-              <span className="text-gradient-primary">Journey</span>
-            </h1>
-            <p className="text-xl text-slate-400 font-medium leading-relaxed max-w-2xl">
-              Take the definitive step to join our elite community. Fill out the operational parameters below to begin your evaluation.
-            </p>
-          </div>
-        </motion.div>
-
+      <main className="relative z-10 max-w-7xl mx-auto px-6 md:px-10 pt-20 pb-40">
         <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
           <div className="relative overflow-hidden">
             <Suspense fallback={<div className="h-96 flex items-center justify-center"><div className="w-8 h-8 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" /></div>}>

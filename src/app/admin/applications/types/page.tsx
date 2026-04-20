@@ -16,6 +16,7 @@ interface AppTypeItem {
   cooldownDays: number
   uniqueApproved: boolean
   allowMultiplePending: boolean
+  enabled?: boolean
   fields?: FieldDef[]
 }
 
@@ -34,7 +35,7 @@ export default function ApplicationTypesPage() {
   const { permissions, loading: permissionsLoading } = usePermissions()
   const router = useRouter()
   const [types, setTypes] = useState<AppTypeItem[]>([])
-  const [form, setForm] = useState<AppTypeItem>({ id: '', name: '', cooldownDays: 0, uniqueApproved: false, allowMultiplePending: false, fields: [] })
+  const [form, setForm] = useState<AppTypeItem>({ id: '', name: '', cooldownDays: 0, uniqueApproved: false, allowMultiplePending: false, enabled: true, fields: [] })
   const [editing, setEditing] = useState(false)
 
   useEffect(() => {
@@ -55,9 +56,9 @@ export default function ApplicationTypesPage() {
 
   const submit = async () => {
     const method = editing ? 'PUT' : 'POST'
-    const payload = { ...form, fields: form.fields || [] }
+    const payload = { ...form, fields: form.fields || [], enabled: form.enabled ?? true }
     const res = await fetch('/api/admin/application-types', { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-    if (res.ok) { setForm({ id: '', name: '', cooldownDays: 0, uniqueApproved: false, allowMultiplePending: false, fields: [] }); setEditing(false); fetchTypes() }
+    if (res.ok) { setForm({ id: '', name: '', cooldownDays: 0, uniqueApproved: false, allowMultiplePending: false, enabled: true, fields: [] }); setEditing(false); fetchTypes() }
   }
 
   const edit = (t: AppTypeItem) => { setForm({ ...t, fields: t.fields || [] }); setEditing(true) }
@@ -129,6 +130,10 @@ export default function ApplicationTypesPage() {
           <div className="flex items-center gap-3">
             <Switch checked={form.allowMultiplePending} onCheckedChange={(v: boolean) => setForm({ ...form, allowMultiplePending: v })} />
             <span>Allow multiple pending at once</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch checked={form.enabled ?? true} onCheckedChange={(v: boolean) => setForm({ ...form, enabled: v })} />
+            <span className="font-bold text-blue-500">Application Open (Visible to players)</span>
           </div>
           </div>
 
@@ -208,7 +213,12 @@ export default function ApplicationTypesPage() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{t.name}</h3>
-                <div className="text-xs text-muted-foreground">{t.id}</div>
+                <div className="flex flex-col items-end">
+                  <div className="text-xs text-muted-foreground">{t.id}</div>
+                  <div className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1 ${t.enabled !== false ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'}`}>
+                    {t.enabled !== false ? 'OPEN' : 'CLOSED'}
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
