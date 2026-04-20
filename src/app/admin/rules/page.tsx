@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { usePermissions } from '@/hooks/use-permissions'
+import { useToast } from '@/hooks/use-toast'
 
 // Prefill using the same defaults used in src/app/rules/page.tsx
 const defaultCategories = [
@@ -115,6 +116,7 @@ export default function AdminRulesCreator() {
       .catch(err => console.error(err))
   }
 
+  const { toast } = useToast()
   const [editing, setEditing] = useState<Record<string, boolean>>({})
 
   function toggleEdit(catId: string) {
@@ -147,16 +149,31 @@ export default function AdminRulesCreator() {
 
   async function saveRules() {
     try {
+      // Strip any MongoDB _id fields to keep the data clean
+      const cleanCategories = categories.map(({ _id, ...cat }: any) => cat)
+      
       const res = await fetch('/api/admin/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ categories })
+        body: JSON.stringify({ categories: cleanCategories })
       })
-      if (!res.ok) throw new Error('Save failed')
-      alert('Rules saved')
-    } catch (err) {
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Save failed')
+      }
+      
+      toast({
+        title: "Rules Synchronized",
+        description: "The community guidelines have been updated successfully.",
+      })
+    } catch (err: any) {
       console.error(err)
-      alert('Failed to save rules')
+      toast({
+        title: "Synchronization Error",
+        description: err.message || "Failed to update rules. Check your permissions.",
+        variant: "destructive"
+      })
     }
   }
 

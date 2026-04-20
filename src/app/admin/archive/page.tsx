@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from "next-auth/react"
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -38,6 +39,7 @@ type ArchivedApplication = {
   status: 'approved' | 'denied'
   statusReason?: string
   updatedAt: string
+  custom?: Record<string, any>
 }
 
 export default function ArchivedApplications() {
@@ -134,6 +136,20 @@ export default function ArchivedApplications() {
     setFilteredApplications(archivedApplications)
   }
 
+  const handleDelete = async (id: string) => {
+    try {
+      const res = await fetch(`/api/applications/archive?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast({ title: 'Application Deleted', description: 'The record has been permanently removed.' })
+        fetchArchivedApplications()
+      } else {
+        throw new Error('Delete failed')
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Failed to delete record.', variant: 'destructive' })
+    }
+  }
+
   if (status === 'loading' || loading || permissionsLoading) {
     return <LoadingPage text="Loading archived applications..." />
   }
@@ -226,6 +242,19 @@ export default function ArchivedApplications() {
                           })}
                         </p>
                       </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => {
+                            if (confirm('Are you sure you want to PERMANENTLY delete this application from the archive? This cannot be undone.')) {
+                              handleDelete(app.id)
+                            }
+                          }}
+                        >
+                          Delete Permanently
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="p-6">
@@ -265,6 +294,23 @@ export default function ArchivedApplications() {
                               <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{app.character}</p>
                             </div>
                           </div>
+
+                          {/* Custom Fields Section */}
+                          {app.custom && Object.keys(app.custom).length > 0 && (
+                            <div className="space-y-4 pt-4 border-t border-border/20">
+                              <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Custom Questionnaire Responses</p>
+                              <div className="grid gap-4">
+                                {Object.entries(app.custom).map(([key, value]) => (
+                                  <div key={key} className="bg-muted/20 rounded-lg p-4 border border-border/20">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{key.replace(/_/g, ' ')}</p>
+                                    <p className="text-sm font-medium whitespace-pre-wrap">
+                                      {value === true ? 'Yes' : value === false ? 'No' : String(value || 'N/A')}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         {app.statusReason && (

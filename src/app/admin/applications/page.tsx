@@ -548,6 +548,23 @@ export default function AdminApplications() {
                               <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{app.character}</p>
                             </div>
                           </div>
+
+                          {/* Custom Fields Section */}
+                          {app.custom && Object.keys(app.custom).length > 0 && (
+                            <div className="space-y-4 pt-4 border-t border-border/20">
+                              <p className="text-xs font-bold text-blue-400 uppercase tracking-widest">Custom Questionnaire Responses</p>
+                              <div className="grid gap-4">
+                                {Object.entries(app.custom).map(([key, value]) => (
+                                  <div key={key} className="bg-muted/20 rounded-lg p-4 border border-border/20">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{key.replace(/_/g, ' ')}</p>
+                                    <p className="text-sm font-medium whitespace-pre-wrap">
+                                      {value === true ? 'Yes' : value === false ? 'No' : String(value || 'N/A')}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                         
                         <div className="pt-4 space-y-3 border-t border-border/50">

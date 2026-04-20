@@ -78,6 +78,13 @@ export async function dbWrite<T = any>(collectionName: string, data: T[]): Promi
 export async function dbReadFile(filePath: string): Promise<string> {
   const collectionName = filePath.split(/[\\/]/).pop()?.replace('.json', '') || 'unknown'
   const data = await dbRead(collectionName)
+  
+  // If it's a single-object "file" (like rules.json), it might be stored as the first element of the array
+  if (data.length === 1 && !filePath.includes('notifications') && !filePath.includes('activity-log')) {
+    // Check if the single item looks like a wrapped config object
+    return JSON.stringify(data[0])
+  }
+  
   return JSON.stringify(data)
 }
 
@@ -88,7 +95,16 @@ export async function dbWriteFile(filePath: string, content: string): Promise<vo
   const collectionName = filePath.split(/[\\/]/).pop()?.replace('.json', '') || 'unknown'
   try {
     const data = JSON.parse(content)
-    await dbWrite(collectionName, Array.isArray(data) ? data : [data])
+    const collection = await getCollection(collectionName)
+    
+    // For single-object files like rules.json, we replace the entire collection content with one document
+    // or if it's an array, we use dbWrite.
+    if (!Array.isArray(data)) {
+      await collection.deleteMany({})
+      await collection.insertOne(data as any)
+    } else {
+      await dbWrite(collectionName, data)
+    }
   } catch (e) {
     console.error(`Failed to parse content for ${collectionName}:`, e)
   }

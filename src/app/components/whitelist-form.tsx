@@ -284,6 +284,19 @@ export default function WhitelistForm() {
                                         </div>
                                       ))}
                                     </div>
+                                  ) : f.type === 'select' ? (
+                                    <select
+                                      className="w-full h-14 bg-black border-white/10 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all rounded-xl text-white text-sm px-6 appearance-none cursor-pointer"
+                                      value={customValues[f.id] || ''}
+                                      onChange={(e) => setCustomValues(p => ({ ...p, [f.id]: e.target.value }))}
+                                    >
+                                      <option value="" disabled className="text-slate-700">Select an option...</option>
+                                      {(f.options || []).map((opt: string) => (
+                                        <option key={opt} value={opt} className="bg-[#0a0a0a] text-white py-2">
+                                          {opt}
+                                        </option>
+                                      ))}
+                                    </select>
                                   ) : (
                                     <Input
                                       type={f.type === 'number' ? 'number' : 'text'}
