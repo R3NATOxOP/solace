@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,7 +14,7 @@ import { BackToDashboardButton } from '@/app/components/admin-button'
 import type { Application } from '@/lib/types'
 import ProfileCard from '@/app/components/profile-card'
 
-export default function CompareApplications() {
+function CompareApplicationsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { permissions, loading: permissionsLoading } = usePermissions()
@@ -246,3 +246,12 @@ export default function CompareApplications() {
     </motion.div>
   )
 }
+
+export default function CompareApplications() {
+  return (
+    <Suspense fallback={<div className="container mx-auto p-4">Loading...</div>}>
+      <CompareApplicationsContent />
+    </Suspense>
+  )
+}
+
