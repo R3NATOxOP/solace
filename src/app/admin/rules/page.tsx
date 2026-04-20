@@ -147,6 +147,19 @@ export default function AdminRulesCreator() {
     setCategories(copy)
   }
 
+  function addCategory() {
+    const id = `cat_${Math.random().toString(36).substr(2, 9)}`
+    setCategories([...categories, { id, title: 'New Category', rules: ['New rule...'] }])
+    setEditing(s => ({ ...s, [id]: true })) // Open it for editing immediately
+  }
+
+  function removeCategory(index: number) {
+    if (!confirm('Are you sure you want to delete this ENTIRE category?')) return
+    const copy = [...categories]
+    copy.splice(index, 1)
+    setCategories(copy)
+  }
+
   async function saveRules() {
     try {
       // Strip any MongoDB _id fields to keep the data clean
@@ -183,8 +196,9 @@ export default function AdminRulesCreator() {
         <h1 className="text-2xl font-bold">Admin — Rules Creator</h1>
         <div className="flex items-center gap-2">
           <Link href="/admin/dashboard">
-            <Button>Dashboard</Button>
+            <Button variant="outline">Dashboard</Button>
           </Link>
+          <Button variant="outline" onClick={addCategory}>Add Category</Button>
           <Button onClick={saveRules}>Save Rules</Button>
         </div>
       </div>
@@ -194,14 +208,17 @@ export default function AdminRulesCreator() {
           <Card key={cat.id}>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>
+                <CardTitle className="flex-1 mr-4">
                   {editing[cat.id] ? (
-                    <Input value={cat.title} onChange={(e) => updateCategoryTitle(ci, e.target.value)} />
+                    <Input value={cat.title} onChange={(e) => updateCategoryTitle(ci, e.target.value)} placeholder="Category Title" />
                   ) : (
                     cat.title
                   )}
                 </CardTitle>
-                <Button size="sm" onClick={() => toggleEdit(cat.id)}>{editing[cat.id] ? 'Cancel' : 'Edit'}</Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => toggleEdit(cat.id)}>{editing[cat.id] ? 'Done' : 'Edit'}</Button>
+                  <Button size="sm" variant="destructive" onClick={() => removeCategory(ci)}>Delete</Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>
