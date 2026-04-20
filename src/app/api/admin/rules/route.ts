@@ -1,11 +1,11 @@
-import fs from 'fs'
-import path from 'path'
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { hasPermission } from '@/lib/config'
 import { getUserRoles } from '@/lib/discord-bot'
 import { logActivity } from '@/lib/activity-log'
+import { dbWriteFile as writeFile } from '@/lib/db'
+import path from 'path'
 
 export async function POST(req: Request) {
   try {
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     const filePath = path.join(process.cwd(), 'data', 'rules.json')
-    fs.writeFileSync(filePath, JSON.stringify(body, null, 2), 'utf-8')
+    await writeFile(filePath, JSON.stringify(body, null, 2))
 
     await logActivity({
       type: 'rules_updated',

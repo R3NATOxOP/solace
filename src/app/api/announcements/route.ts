@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 import { getServerSession } from "next-auth"
 import { authOptions, hasAnyStaffAccess } from '@/lib/auth'
 import { logActivity } from '@/lib/activity-log'
+import { dbReadFile as readFile, dbWriteFile as writeFile } from '@/lib/db'
+import path from 'path'
 
-const dataDir = path.join(process.cwd(), 'data')
-const announcementsFilePath = path.join(dataDir, 'announcements.json')
+const announcementsFilePath = path.join(process.cwd(), 'data', 'announcements.json')
 
 export interface Announcement {
   id: string
@@ -20,22 +19,11 @@ export interface Announcement {
   createdById: string
 }
 
-// Ensure data directory exists
-async function ensureDataDir() {
-  try {
-    await fs.access(dataDir)
-  } catch {
-    await fs.mkdir(dataDir, { recursive: true })
-  }
-}
-
 // GET - Fetch all announcements (public, no auth required)
 export async function GET() {
   try {
-    await ensureDataDir()
-
     try {
-      const data = await fs.readFile(announcementsFilePath, 'utf8')
+      const data = await readFile(announcementsFilePath)
       const announcements: Announcement[] = JSON.parse(data)
       // Sort by creation date (newest first)
       const sorted = announcements.sort((a, b) => 
@@ -71,11 +59,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    await ensureDataDir()
-
     let announcements: Announcement[] = []
     try {
-      const data = await fs.readFile(announcementsFilePath, 'utf8')
+      const data = await readFile(announcementsFilePath)
       announcements = JSON.parse(data)
     } catch {
       // File doesn't exist, start with empty array
@@ -93,7 +79,7 @@ export async function POST(req: Request) {
     }
 
     announcements.unshift(newAnnouncement) // Add to beginning
-    await fs.writeFile(announcementsFilePath, JSON.stringify(announcements, null, 2))
+    await writeFile(announcementsFilePath, JSON.stringify(announcements, null, 2))
 
     // Log activity
     await logActivity({

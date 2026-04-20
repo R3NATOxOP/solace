@@ -63,8 +63,12 @@ html {
     @apply border-border;
   }
   body {
-    @apply bg-black text-white selection:bg-teal-500/30 selection:text-teal-200 antialiased;
+    @apply text-white selection:bg-teal-500/30 selection:text-teal-200 antialiased min-h-screen;
     font-family: var(--font-oswald), sans-serif;
+    background-image: linear-gradient(rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.75)), url('/background.jpg');
+    background-attachment: fixed;
+    background-size: cover;
+    background-position: center;
   }
   
   h1, h2, h3, h4, h5, h6 {

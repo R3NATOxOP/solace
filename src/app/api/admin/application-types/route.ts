@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import path from 'path'
-import fs from 'fs'
 import { logActivity } from '@/lib/activity-log'
+import { dbReadFile as readFile, dbWriteFile as writeFile } from '@/lib/db'
 
 const TYPES_FILE = path.join(process.cwd(), 'data', 'application-types.json')
 
@@ -26,9 +26,9 @@ interface FieldDef {
   options?: string[]
 }
 
-function readTypes(): AppTypeItem[] {
+async function readTypes(): Promise<AppTypeItem[]> {
   try {
-    const data = fs.readFileSync(TYPES_FILE, 'utf-8')
+    const data = await readFile(TYPES_FILE)
     const arr = JSON.parse(data)
     return Array.isArray(arr) ? arr : []
   } catch {
@@ -36,13 +36,13 @@ function readTypes(): AppTypeItem[] {
   }
 }
 
-function writeTypes(types: AppTypeItem[]) {
-  fs.writeFileSync(TYPES_FILE, JSON.stringify(types, null, 2))
+async function writeTypes(types: AppTypeItem[]) {
+  await writeFile(TYPES_FILE, JSON.stringify(types, null, 2))
 }
 
 export async function GET() {
   try {
-    const list = readTypes()
+    const list = await readTypes()
     return NextResponse.json(list)
   } catch (e) {
     return NextResponse.json([], { status: 200 })
@@ -57,11 +57,11 @@ export async function POST(request: NextRequest) {
   const { id, name, cooldownDays = 0, uniqueApproved = false, allowMultiplePending = false, fields = [] } = body as Partial<AppTypeItem>
   if (!id || !name) return NextResponse.json({ error: 'Missing id or name' }, { status: 400 })
 
-  const types = readTypes()
+  const types = await readTypes()
   if (types.some(t => t.id === id)) return NextResponse.json({ error: 'Type exists' }, { status: 409 })
   const item: AppTypeItem = { id, name, cooldownDays, uniqueApproved, allowMultiplePending, fields: Array.isArray(fields) ? fields : [] }
   types.push(item)
-  writeTypes(types)
+  await writeTypes(types)
 
   await logActivity({
     type: 'application_type_created',
@@ -83,7 +83,7 @@ export async function PUT(request: NextRequest) {
   const { id, name, cooldownDays, uniqueApproved, allowMultiplePending, fields } = body as Partial<AppTypeItem>
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  const types = readTypes()
+  const types = await readTypes()
   const idx = types.findIndex(t => t.id === id)
   if (idx === -1) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   types[idx] = {
@@ -94,7 +94,7 @@ export async function PUT(request: NextRequest) {
     ...(allowMultiplePending !== undefined ? { allowMultiplePending } : {}),
     ...(fields !== undefined ? { fields: Array.isArray(fields) ? fields : [] } : {}),
   }
-  writeTypes(types)
+  await writeTypes(types)
 
   await logActivity({
     type: 'application_type_updated',
@@ -116,11 +116,11 @@ export async function DELETE(request: NextRequest) {
   const id = searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
-  const types = readTypes()
+  const types = await readTypes()
   const deletedType = types.find(t => t.id === id)
   const filtered = types.filter(t => t.id !== id)
   if (filtered.length === types.length) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  writeTypes(filtered)
+  await writeTypes(filtered)
 
   await logActivity({
     type: 'application_type_deleted',

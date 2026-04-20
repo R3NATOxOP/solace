@@ -5,7 +5,7 @@ import { createTicket, listTickets } from '@/lib/tickets'
 import { notifyTicketCreated } from '@/lib/discord-bot'
 import { logActivity } from '@/lib/activity-log'
 import type { TicketCategory, TicketPriority } from '@/lib/types'
-import fs from 'fs/promises'
+import { dbReadFile as readFile, dbWriteFile as writeFile } from '@/lib/db'
 import path from 'path'
 
 export async function GET() {
@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       const notificationsFilePath = path.join(process.cwd(), 'data', 'notifications.json')
       let notifications: any[] = []
       try {
-        const notifData = await fs.readFile(notificationsFilePath, 'utf8')
+        const notifData = await readFile(notificationsFilePath)
         notifications = JSON.parse(notifData)
       } catch {
         notifications = []
@@ -84,7 +84,7 @@ export async function POST(req: Request) {
         read: false
       })
 
-      await fs.writeFile(notificationsFilePath, JSON.stringify(notifications, null, 2))
+      await writeFile(notificationsFilePath, JSON.stringify(notifications, null, 2))
     } catch (error) {
       console.error('Failed to create admin notification:', error)
     }

@@ -38,7 +38,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning className={`${oswald.variable}`}>
-      <body className={`${oswald.className} bg-black antialiased`}>
+      <body className={`${oswald.className} antialiased`}>
         <SessionProvider>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false} forcedTheme="dark">
             <div className="min-h-screen relative selection:bg-teal-500/30 selection:text-teal-200">
