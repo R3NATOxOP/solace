@@ -1,4 +1,6 @@
 import { MongoClient, Db, Collection } from 'mongodb'
+import fs from 'fs/promises'
+import path from 'path'
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Please add your Mongo URI to .env')
@@ -72,6 +74,7 @@ export async function dbWrite<T = any>(collectionName: string, data: T[]): Promi
   }
 }
 
+
 /**
  * Compatibility helper to simulate fs.readFile for JSON files
  */
@@ -79,13 +82,21 @@ export async function dbReadFile(filePath: string): Promise<string> {
   const collectionName = filePath.split(/[\\/]/).pop()?.replace('.json', '') || 'unknown'
   const data = await dbRead(collectionName)
   
-  // If it's a single-object "file" (like rules.json), it might be stored as the first element of the array
-  if (data.length === 1 && !filePath.includes('notifications') && !filePath.includes('activity-log')) {
-    // Check if the single item looks like a wrapped config object
-    return JSON.stringify(data[0])
+  if (data && data.length > 0) {
+    // If it's a single-object "file" (like rules.json), it might be stored as the first element of the array
+    if (data.length === 1 && !filePath.includes('notifications') && !filePath.includes('activity-log')) {
+      return JSON.stringify(data[0])
+    }
+    return JSON.stringify(data)
   }
-  
-  return JSON.stringify(data)
+
+  // Fallback to local file if not in DB (for migration or missing data)
+  try {
+    return await fs.readFile(filePath, 'utf-8');
+  } catch (e) {
+    console.warn(`File not found in DB or Disk: ${filePath}`);
+    return filePath.includes('rules') || filePath.includes('types') ? '{}' : '[]';
+  }
 }
 
 /**
