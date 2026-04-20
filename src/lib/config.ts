@@ -361,6 +361,12 @@ export const getAllRoles = () => ({
   reviewer: applicationConfig.roles.reviewerRoles,
 })
 
+/**
+ * Get list of admin Discord IDs
+ */
+export const getAdminDiscordIds = () => applicationConfig.roles.adminRoles
+
+
 // ============================================
 // SHOP & PRICING CONFIGURATION
 // ============================================
