@@ -1,32 +1,12 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 import { logActivity } from '@/lib/activity-log'
 import { getUserRoles, sendChannelMessage } from '@/lib/discord-bot'
 import { hasPriorityRole } from '@/lib/config'
-
-const dataFilePath = path.join(process.cwd(), 'data', 'applications.json')
-const blacklistFilePath = path.join(process.cwd(), 'data', 'blacklist.json')
-const bansFilePath = path.join(process.cwd(), 'data', 'bans.json')
-
-interface BanEntry {
-  discordId: string
-  reason: string
-  admin: string
-  expires: string | null
-}
-
-interface BlacklistEntry {
-  discordId: string
-  reason: string
-  admin: string
-  date: string
-}
+import { getCollection, dbRead } from '@/lib/db'
 
 async function isUserBanned(discordId: string): Promise<boolean> {
   try {
-    const bansData = await fs.readFile(bansFilePath, 'utf8')
-    const bans: BanEntry[] = JSON.parse(bansData)
+    const bans = await dbRead<any>('bans')
     return bans.some(ban => ban.discordId === discordId)
   } catch {
     return false
@@ -35,8 +15,7 @@ async function isUserBanned(discordId: string): Promise<boolean> {
 
 async function isUserBlacklisted(discordId: string): Promise<boolean> {
   try {
-    const blacklistData = await fs.readFile(blacklistFilePath, 'utf8')
-    const blacklist: BlacklistEntry[] = JSON.parse(blacklistData)
+    const blacklist = await dbRead<any>('blacklist')
     return blacklist.some(entry => entry.discordId === discordId)
   } catch {
     return false
@@ -52,7 +31,6 @@ export async function POST(req: Request) {
     if (application.discord?.id) {
       try {
         const roles = await getUserRoles(application.discord.id)
-        // Check if user has any priority role from config
         if (hasPriorityRole(roles)) {
           priority = 'high'
         }
@@ -74,22 +52,15 @@ export async function POST(req: Request) {
       }
     }
 
-    let applications = []
-    try {
-      const data = await fs.readFile(dataFilePath, 'utf8')
-      applications = JSON.parse(data)
-    } catch {
-    }
+    const applicationsCollection = await getCollection('applications')
+    const applications = await applicationsCollection.find({}).toArray()
 
     // Enforce per-type rules
-    const typesFilePath = path.join(process.cwd(), 'data', 'application-types.json')
+    const typeConfigs = await dbRead<any>('application-types')
     let typeConfig: { cooldownDays: number; uniqueApproved: boolean; allowMultiplePending: boolean } = { cooldownDays: 0, uniqueApproved: false, allowMultiplePending: false }
-    try {
-      const tRaw = await fs.readFile(typesFilePath, 'utf8')
-      const list = JSON.parse(tRaw)
-      const found = Array.isArray(list) ? list.find((t: any) => t.id === applicationType) : null
-      if (found) typeConfig = { cooldownDays: found.cooldownDays || 0, uniqueApproved: !!found.uniqueApproved, allowMultiplePending: !!found.allowMultiplePending }
-    } catch { }
+    
+    const found = Array.isArray(typeConfigs) ? typeConfigs.find((t: any) => t.id === applicationType) : null
+    if (found) typeConfig = { cooldownDays: found.cooldownDays || 0, uniqueApproved: !!found.uniqueApproved, allowMultiplePending: !!found.allowMultiplePending }
 
     const userId = application.discord?.id
     if (userId) {
@@ -101,30 +72,27 @@ export async function POST(req: Request) {
       }
 
       if (typeConfig.uniqueApproved) {
-        try {
-          const archivedRaw = await fs.readFile(path.join(process.cwd(), 'data', 'archived_applications.json'), 'utf8')
-          const archived = JSON.parse(archivedRaw)
-          if (Array.isArray(archived)) {
-            const approved = archived.find((a: any) => a.discord?.id === userId && ((a.applicationType || 'whitelist') === applicationType) && a.status === 'approved')
-            if (approved) {
-              return NextResponse.json({ error: 'You are already approved for this application type' }, { status: 400 })
-            }
-            if (typeConfig.cooldownDays > 0) {
-              const deniedList = archived.filter((a: any) => a.discord?.id === userId && ((a.applicationType || 'whitelist') === applicationType) && a.status === 'denied')
-              if (deniedList.length > 0) {
-                deniedList.sort((a: any, b: any) => new Date(b.updatedAt || b.timestamp).getTime() - new Date(a.updatedAt || a.timestamp).getTime())
-                const lastDenied = deniedList[0]
-                const since = new Date(lastDenied.updatedAt || lastDenied.timestamp)
-                const until = new Date(since)
-                until.setDate(until.getDate() + typeConfig.cooldownDays)
-                if (new Date() < until) {
-                  const daysRemaining = Math.max(0, Math.ceil((until.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
-                  return NextResponse.json({ error: `Please wait ${daysRemaining} day(s) before applying again for this type` }, { status: 400 })
-                }
+        const archived = await dbRead<any>('archived_applications')
+        if (Array.isArray(archived)) {
+          const approved = archived.find((a: any) => a.discord?.id === userId && ((a.applicationType || 'whitelist') === applicationType) && a.status === 'approved')
+          if (approved) {
+            return NextResponse.json({ error: 'You are already approved for this application type' }, { status: 400 })
+          }
+          if (typeConfig.cooldownDays > 0) {
+            const deniedList = archived.filter((a: any) => a.discord?.id === userId && ((a.applicationType || 'whitelist') === applicationType) && a.status === 'denied')
+            if (deniedList.length > 0) {
+              deniedList.sort((a: any, b: any) => new Date(b.updatedAt || b.timestamp).getTime() - new Date(a.updatedAt || a.timestamp).getTime())
+              const lastDenied = deniedList[0]
+              const since = new Date(lastDenied.updatedAt || lastDenied.timestamp)
+              const until = new Date(since)
+              until.setDate(until.getDate() + typeConfig.cooldownDays)
+              if (new Date() < until) {
+                const daysRemaining = Math.max(0, Math.ceil((until.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+                return NextResponse.json({ error: `Please wait ${daysRemaining} day(s) before applying again for this type` }, { status: 400 })
               }
             }
           }
-        } catch { }
+        }
       }
     }
 
@@ -136,9 +104,8 @@ export async function POST(req: Request) {
       applicationType: applicationType,
       ...application
     }
-    applications.push(newApplication)
-
-    await fs.writeFile(dataFilePath, JSON.stringify(applications, null, 2))
+    
+    await applicationsCollection.insertOne(newApplication)
 
     // Create notification for admins
     try {
@@ -186,12 +153,12 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const data = await fs.readFile(dataFilePath, 'utf8')
-    const applications = JSON.parse(data)
+    const applications = await dbRead('applications')
     return NextResponse.json(applications)
   } catch (error) {
     console.error('Error reading applications:', error)
     return NextResponse.json({ error: 'Failed to read applications' }, { status: 500 })
   }
 }
+
 

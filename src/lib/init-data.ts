@@ -93,7 +93,7 @@ export function initializeDataFiles() {
     let filesCreated = 0
     Object.entries(dataFiles).forEach(([filename, initialData]) => {
       const filePath = join(DATA_DIR, filename)
-      
+
       if (!existsSync(filePath)) {
         writeFileSync(filePath, JSON.stringify(initialData, null, 2))
         console.log(`✅ Created ${filename}`)

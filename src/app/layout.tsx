@@ -26,7 +26,9 @@ export const metadata: Metadata = {
 
 // Initialize data files on server startup
 if (typeof window === 'undefined') {
-  initializeDataFiles()
+  (async () => {
+    await initializeDataFiles()
+  })()
 }
 
 export default function RootLayout({

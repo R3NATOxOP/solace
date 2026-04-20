@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { hasAnyStaffRole } from '@/lib/config'
 import { getUserRoles } from '@/lib/discord-bot'
+import { dbReadFile as readFile, dbWriteFile as writeFile } from '@/lib/db'
+import path from 'path'
 
 const notificationsFilePath = path.join(process.cwd(), 'data', 'notifications.json')
 
@@ -37,7 +37,7 @@ export async function GET() {
 
     let notifications: Notification[] = []
     try {
-      const data = await fs.readFile(notificationsFilePath, 'utf8')
+      const data = await readFile(notificationsFilePath)
       notifications = JSON.parse(data)
     } catch {
       notifications = []
@@ -59,7 +59,7 @@ export async function POST(req: Request) {
 
     let notifications: Notification[] = []
     try {
-      const data = await fs.readFile(notificationsFilePath, 'utf8')
+      const data = await readFile(notificationsFilePath)
       notifications = JSON.parse(data)
     } catch {
       notifications = []
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     }
 
     notifications.push(newNotification)
-    await fs.writeFile(notificationsFilePath, JSON.stringify(notifications, null, 2))
+    await writeFile(notificationsFilePath, JSON.stringify(notifications, null, 2))
 
     return NextResponse.json(newNotification)
   } catch (error) {
@@ -81,3 +81,4 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Failed to create notification' }, { status: 500 })
   }
 }
+
