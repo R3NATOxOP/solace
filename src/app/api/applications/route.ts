@@ -107,42 +107,41 @@ export async function POST(req: Request) {
     
     await applicationsCollection.insertOne(newApplication)
 
-    // Create notification for admins
-    try {
-      await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/notifications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'application_submitted',
-          title: 'New Application Submitted',
-          message: `${application.discord.username} has submitted a ${applicationType} application`,
-          applicationId: newApplication.id,
-          userId: application.discord.id,
-          username: application.discord.username,
-          priority: priority,
+    // Handle non-critical tasks in the background to prevent timeout
+    (async () => {
+      try {
+        // Create notification for admins
+        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/notifications`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'application_submitted',
+            title: 'New Application Submitted',
+            message: `${application.discord.username} has submitted a ${applicationType} application`,
+            applicationId: newApplication.id,
+            userId: application.discord.id,
+            username: application.discord.username,
+            priority: priority,
+          })
         })
-      })
-    } catch (error) {
-      console.error('Failed to create notification:', error)
-    }
 
-    // Send notification to Discord channel
-    try {
-      await sendChannelMessage(`New allowlist application submitted by (${application.discord.username}) - Priority: ${priority}`)
-    } catch (error) {
-      console.error('Failed to send Discord notification:', error)
-    }
+        // Send notification to Discord channel
+        await sendChannelMessage(`New allowlist application submitted by (${application.discord.username}) - Priority: ${priority}`)
 
-    // Log activity
-    if (application.discord?.id) {
-      await logActivity({
-        type: 'application_created',
-        userId: application.discord.id,
-        userName: application.discord.username,
-        targetId: newApplication.id,
-        targetName: application.username || application.discord.username,
-      })
-    }
+        // Log activity
+        if (application.discord?.id) {
+          await logActivity({
+            type: 'application_created',
+            userId: application.discord.id,
+            userName: application.discord.username,
+            targetId: newApplication.id,
+            targetName: application.username || application.discord.username,
+          })
+        }
+      } catch (bgError) {
+        console.error('Background task error:', bgError)
+      }
+    })()
 
     return NextResponse.json({ message: 'Application submitted successfully', id: newApplication.id })
   } catch (error) {

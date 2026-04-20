@@ -189,12 +189,23 @@ export default function WhitelistForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...previewData, applicationType: selectedType, discord: (session as ExtendedSession)?.discord, custom: customValues }),
       })
+      
+      const data = await res.json().catch(() => ({}))
+
       if (res.ok) {
         toast({ title: 'Transmission Successful', description: 'Your dossier has been uploaded.' })
         form.reset(); setShowPreview(false)
-      } else throw new Error()
-    } catch {
-      toast({ title: 'Transmission Error', description: 'Failed to upload dossier.', variant: 'destructive' })
+        // Clear draft after success
+        fetch('/api/applications/drafts', { method: 'DELETE' }).catch(() => {})
+      } else {
+        throw new Error(data.error || 'Failed to upload dossier.')
+      }
+    } catch (err: any) {
+      toast({ 
+        title: 'Transmission Error', 
+        description: err.message || 'An unexpected error occurred during transmission.', 
+        variant: 'destructive' 
+      })
     } finally { setIsSubmitting(false) }
   }
 

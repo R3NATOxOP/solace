@@ -1,4 +1,4 @@
-import { MongoClient, Db, Collection } from 'mongodb'
+import { MongoClient, Db, Collection, ServerApiVersion } from 'mongodb'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -42,17 +42,6 @@ export async function getDb(): Promise<Db> {
 }
 
 /**
- * Helper to get a collection
- */
-export async function getCollection<T = any>(name: string): Promise<Collection<T>> {
-  const db = await getDb()
-  return db.collection<T>(name)
-}
-
-/**
- * Generic function to get all items from a collection (replaces JSON file read)
- */
-/**
  * Helper to make MongoDB documents JSON serializable (converts ObjectId to string)
  */
 function serializeData(data: any): any {
@@ -72,6 +61,9 @@ function serializeData(data: any): any {
   return data
 }
 
+/**
+ * Generic function to get all items from a collection (replaces JSON file read)
+ */
 export async function dbRead<T = any>(collectionName: string): Promise<T[]> {
   try {
     const collection = await getCollection(collectionName)
@@ -98,20 +90,29 @@ export async function dbRead<T = any>(collectionName: string): Promise<T[]> {
 }
 
 /**
- * Generic function to save/replace all items in a collection (replaces JSON file write)
+ * Generic function to update items in a collection (replaces JSON file write)
  */
 export async function dbWrite<T = any>(collectionName: string, data: T[]): Promise<void> {
   try {
     const collection = await getCollection(collectionName)
+    // For simplicity in this shim, we replace the whole collection
+    // In a real app, you'd use more targeted updates
     await collection.deleteMany({})
-    if (data && data.length > 0) {
-      await collection.insertMany(data as any)
+    if (data.length > 0) {
+      await collection.insertMany(data as any[])
     }
   } catch (error) {
     console.error(`Error writing to collection ${collectionName}:`, error)
   }
 }
 
+/**
+ * Utility to get a collection by name
+ */
+export async function getCollection<T = any>(name: string): Promise<Collection<T>> {
+  const db = await getDb()
+  return db.collection<T>(name)
+}
 
 /**
  * Compatibility helper to simulate fs.readFile for JSON files
@@ -120,42 +121,49 @@ export async function dbReadFile(filePath: string): Promise<string> {
   const collectionName = filePath.split(/[\\/]/).pop()?.replace('.json', '') || 'unknown'
   const data = await dbRead(collectionName)
   
-  if (data && data.length > 0) {
-    // If it's a single-object "file" (like rules.json), it might be stored as the first element of the array
-    if (data.length === 1 && !filePath.includes('notifications') && !filePath.includes('activity-log')) {
-      return JSON.stringify(data[0])
-    }
-    return JSON.stringify(data)
+  if (!data || data.length === 0) {
+    return filePath.includes('rules') || filePath.includes('types') ? '{}' : '[]'
   }
 
-  // Fallback to local file if not in DB (for migration or missing data)
-  try {
-    return await fs.readFile(filePath, 'utf-8');
-  } catch (e) {
-    console.warn(`File not found in DB or Disk: ${filePath}`);
-    return filePath.includes('rules') || filePath.includes('types') ? '{}' : '[]';
+  // Collections that should always be returned as arrays
+  const isArrayType = 
+    collectionName.includes('applications') || 
+    collectionName.includes('tickets') || 
+    collectionName.includes('log') ||
+    collectionName.includes('notifications')
+
+  // If it's a single object and NOT a list type, return just the object string
+  if (data.length === 1 && !isArrayType) {
+    return JSON.stringify(data[0])
   }
+  
+  return JSON.stringify(data)
 }
 
 /**
  * Compatibility helper to simulate fs.writeFile for JSON files
  */
-export async function dbWriteFile(filePath: string, content: string): Promise<void> {
+export async function dbWriteFile(filePath: string, data: string): Promise<void> {
   const collectionName = filePath.split(/[\\/]/).pop()?.replace('.json', '') || 'unknown'
   try {
-    const data = JSON.parse(content)
     const collection = await getCollection(collectionName)
+    const dataObj = JSON.parse(data)
     
-    // For single-object files like rules.json, we replace the entire collection content with one document
-    // or if it's an array, we use dbWrite.
-    if (!Array.isArray(data)) {
+    if (Array.isArray(dataObj)) {
       await collection.deleteMany({})
-      await collection.insertOne(data as any)
+      if (dataObj.length > 0) {
+        await collection.insertMany(dataObj as any)
+      }
     } else {
-      await dbWrite(collectionName, data)
+      // For single object files (like rules.json)
+      // We use a constant _id to ensure we only have one document
+      await collection.updateOne(
+        { _id: 'default' as any },
+        { $set: { ...dataObj, updatedAt: new Date() } },
+        { upsert: true }
+      )
     }
-  } catch (e) {
-    console.error(`Failed to parse content for ${collectionName}:`, e)
+  } catch (error) {
+    console.error(`Error writing file to DB: ${collectionName}`, error)
   }
 }
-
