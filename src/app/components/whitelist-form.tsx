@@ -193,17 +193,17 @@ export default function WhitelistForm() {
       const data = await res.json().catch(() => ({}))
 
       if (res.ok) {
-        toast({ title: 'Transmission Successful', description: 'Your dossier has been uploaded.' })
+        toast({ title: 'Submission Successful', description: 'Your application has been uploaded.' })
         form.reset(); setShowPreview(false)
         // Clear draft after success
         fetch('/api/applications/drafts', { method: 'DELETE' }).catch(() => {})
       } else {
-        throw new Error(data.error || 'Failed to upload dossier.')
+        throw new Error(data.error || 'Failed to upload application.')
       }
     } catch (err: any) {
       toast({ 
-        title: 'Transmission Error', 
-        description: err.message || 'An unexpected error occurred during transmission.', 
+        title: 'Submission Error', 
+        description: err.message || 'An unexpected error occurred during submission.', 
         variant: 'destructive' 
       })
     } finally { setIsSubmitting(false) }

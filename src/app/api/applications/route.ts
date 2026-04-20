@@ -107,26 +107,28 @@ export async function POST(req: Request) {
     
     await applicationsCollection.insertOne(newApplication)
 
-    // Handle non-critical tasks in the background to prevent timeout
-    (async () => {
+    // Handle non-critical tasks in the background without awaiting them
+    // We don't await this so the user gets a response IMMEDIATELY
+    Promise.resolve().then(async () => {
       try {
         // Create notification for admins
-        await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/notifications`, {
+        const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+        await fetch(`${baseUrl}/api/notifications`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'application_submitted',
             title: 'New Application Submitted',
-            message: `${application.discord.username} has submitted a ${applicationType} application`,
+            message: `${application.discord?.username || 'User'} has submitted a ${applicationType} application`,
             applicationId: newApplication.id,
-            userId: application.discord.id,
-            username: application.discord.username,
+            userId: application.discord?.id,
+            username: application.discord?.username,
             priority: priority,
           })
-        })
+        }).catch(() => {}) // Silent fail for notifications
 
         // Send notification to Discord channel
-        await sendChannelMessage(`New allowlist application submitted by (${application.discord.username}) - Priority: ${priority}`)
+        await sendChannelMessage(`New allowlist application submitted by (${application.discord?.username || 'User'}) - Priority: ${priority}`).catch(() => {})
 
         // Log activity
         if (application.discord?.id) {
@@ -136,17 +138,29 @@ export async function POST(req: Request) {
             userName: application.discord.username,
             targetId: newApplication.id,
             targetName: application.username || application.discord.username,
-          })
+          }).catch(() => {})
         }
       } catch (bgError) {
-        console.error('Background task error:', bgError)
+        console.error('Background task failure (Non-critical):', bgError)
       }
-    })()
+    })
 
-    return NextResponse.json({ message: 'Application submitted successfully', id: newApplication.id })
-  } catch (error) {
-    console.error('Error saving application:', error)
-    return NextResponse.json({ error: 'Failed to save application' }, { status: 500 })
+    return NextResponse.json({ 
+      ok: true,
+      message: 'Application submitted successfully', 
+      id: newApplication.id 
+    })
+  } catch (error: any) {
+    console.error('CRITICAL ERROR saving application:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint,
+      stack: error.stack
+    })
+    return NextResponse.json({ 
+      error: `Failed to save application: ${error.message || 'Unknown database error'}` 
+    }, { status: 500 })
   }
 }
 

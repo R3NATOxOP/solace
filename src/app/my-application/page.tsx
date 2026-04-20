@@ -161,14 +161,14 @@ export default function MyApplicationPage() {
         >
           <div className="flex flex-col">
             <span className="text-blue-400 text-xs font-black uppercase tracking-[0.4em] mb-4">
-              Personal Dossier
+              Application Profile
             </span>
             <h1 className="text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] uppercase text-white mb-8">
               Application <br />
               <span className="text-gradient-primary">Tracking</span>
             </h1>
             <p className="text-xl text-slate-400 font-medium leading-relaxed max-w-2xl">
-              Monitor the status of your entry credentials and review historical transmissions.
+              Monitor the status of your applications and review historical submissions.
             </p>
           </div>
         </motion.div>
@@ -177,7 +177,7 @@ export default function MyApplicationPage() {
         <div className="flex gap-4 mb-16">
           <button onClick={() => setViewMode('latest')} className={`px-8 py-4 rounded-lg font-black text-xs uppercase tracking-widest transition-all duration-500 relative ${viewMode === 'latest' ? 'text-white' : 'text-slate-500'}`}>
             {viewMode === 'latest' && <motion.div layoutId="viewTab" className="absolute inset-0 bg-blue-500/10 border border-blue-500/30 rounded-lg" />}
-            <span className="relative z-10 flex items-center gap-3"><Eye className="w-4 h-4" /> Primary File</span>
+            <span className="relative z-10 flex items-center gap-3"><Eye className="w-4 h-4" /> Current Status</span>
           </button>
           <button onClick={() => setViewMode('history')} className={`px-8 py-4 rounded-lg font-black text-xs uppercase tracking-widest transition-all duration-500 relative ${viewMode === 'history' ? 'text-white' : 'text-slate-500'}`}>
             {viewMode === 'history' && <motion.div layoutId="viewTab" className="absolute inset-0 bg-blue-500/10 border border-blue-500/30 rounded-lg" />}

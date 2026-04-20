@@ -13,6 +13,7 @@ interface AppTypeItem {
   cooldownDays: number
   uniqueApproved: boolean
   allowMultiplePending: boolean
+  enabled?: boolean
   fields?: FieldDef[]
 }
 
@@ -54,12 +55,12 @@ export async function POST(request: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { id, name, cooldownDays = 0, uniqueApproved = false, allowMultiplePending = false, fields = [] } = body as Partial<AppTypeItem>
+  const { id, name, cooldownDays = 0, uniqueApproved = false, allowMultiplePending = false, enabled = true, fields = [] } = body as Partial<AppTypeItem>
   if (!id || !name) return NextResponse.json({ error: 'Missing id or name' }, { status: 400 })
 
   const types = await readTypes()
   if (types.some(t => t.id === id)) return NextResponse.json({ error: 'Type exists' }, { status: 409 })
-  const item: AppTypeItem = { id, name, cooldownDays, uniqueApproved, allowMultiplePending, fields: Array.isArray(fields) ? fields : [] }
+  const item: AppTypeItem = { id, name, cooldownDays, uniqueApproved, allowMultiplePending, enabled, fields: Array.isArray(fields) ? fields : [] }
   types.push(item)
   await writeTypes(types)
 
@@ -80,7 +81,7 @@ export async function PUT(request: NextRequest) {
   if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await request.json()
-  const { id, name, cooldownDays, uniqueApproved, allowMultiplePending, fields } = body as Partial<AppTypeItem>
+  const { id, name, cooldownDays, uniqueApproved, allowMultiplePending, enabled, fields } = body as Partial<AppTypeItem>
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 })
 
   const types = await readTypes()
@@ -92,6 +93,7 @@ export async function PUT(request: NextRequest) {
     ...(cooldownDays !== undefined ? { cooldownDays } : {}),
     ...(uniqueApproved !== undefined ? { uniqueApproved } : {}),
     ...(allowMultiplePending !== undefined ? { allowMultiplePending } : {}),
+    ...(enabled !== undefined ? { enabled } : {}),
     ...(fields !== undefined ? { fields: Array.isArray(fields) ? fields : [] } : {}),
   }
   await writeTypes(types)

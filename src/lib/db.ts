@@ -65,6 +65,7 @@ export async function dbWrite<T = any>(collectionName: string, data: T[]): Promi
     if (error) throw error
   } catch (error) {
     console.error(`Error writing to Supabase (${collectionName}):`, error)
+    throw error // Re-throw so the API knows it failed
   }
 }
 
