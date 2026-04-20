@@ -164,18 +164,18 @@ export default function AdminRulesCreator() {
     try {
       // Strip any MongoDB _id fields to keep the data clean
       const cleanCategories = categories.map(({ _id, ...cat }: any) => cat)
-      
+
       const res = await fetch('/api/admin/rules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ categories: cleanCategories })
       })
-      
+
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.error || 'Save failed')
       }
-      
+
       toast({
         title: "Rules Synchronized",
         description: "The community guidelines have been updated successfully.",

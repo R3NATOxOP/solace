@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import type { Application } from '@/lib/types'
-
-const dataFilePath = path.join(process.cwd(), 'data', 'applications.json')
-const archiveFilePath = path.join(process.cwd(), 'data', 'archived_applications.json')
+import { dbReadFile as readFile } from '@/lib/db'
 
 export async function GET() {
   try {
@@ -19,12 +15,12 @@ export async function GET() {
     let archived: Application[] = []
 
     try {
-      const data = await fs.readFile(dataFilePath, 'utf8')
+      const data = await readFile('applications.json')
       applications = JSON.parse(data)
     } catch {}
 
     try {
-      const archivedData = await fs.readFile(archiveFilePath, 'utf8')
+      const archivedData = await readFile('archived_applications.json')
       archived = JSON.parse(archivedData)
     } catch {}
 

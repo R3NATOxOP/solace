@@ -1,11 +1,8 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 import { getServerSession } from "next-auth"
 import { authOptions, hasAnyStaffAccess } from '@/lib/auth'
 import type { Application, ApplicationFilters } from '@/lib/types'
-
-const dataFilePath = path.join(process.cwd(), 'data', 'applications.json')
+import { dbRead } from '@/lib/db'
 
 export async function POST(req: Request) {
   try {
@@ -22,8 +19,7 @@ export async function POST(req: Request) {
 
     let applications: Application[] = []
     try {
-      const data = await fs.readFile(dataFilePath, 'utf8')
-      applications = JSON.parse(data)
+      applications = await dbRead('applications')
     } catch {
       return NextResponse.json([])
     }

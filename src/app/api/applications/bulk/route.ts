@@ -1,13 +1,9 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
 import { getServerSession } from "next-auth"
 import { authOptions, hasAnyStaffAccess } from '@/lib/auth'
 import { logActivity } from '@/lib/activity-log'
 import type { Application } from '@/lib/types'
-
-const dataFilePath = path.join(process.cwd(), 'data', 'applications.json')
-const archiveFilePath = path.join(process.cwd(), 'data', 'archived_applications.json')
+import { dbReadFile as readFile, dbWriteFile as writeFile } from '@/lib/db'
 
 export async function POST(req: Request) {
   try {
@@ -26,7 +22,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
     }
 
-    const data = await fs.readFile(dataFilePath, 'utf8')
+    const data = await readFile('applications.json')
     let applications: Application[] = JSON.parse(data)
 
     const toProcess = applications.filter(app => applicationIds.includes(app.id))
@@ -37,7 +33,7 @@ export async function POST(req: Request) {
 
     let archived: Application[] = []
     try {
-      const archivedData = await fs.readFile(archiveFilePath, 'utf8')
+      const archivedData = await readFile('archived_applications.json')
       archived = JSON.parse(archivedData)
     } catch {}
 
@@ -48,7 +44,7 @@ export async function POST(req: Request) {
             ? { ...app, assignedTo }
             : app
         )
-        await fs.writeFile(dataFilePath, JSON.stringify(applications, null, 2))
+        await writeFile('applications.json', JSON.stringify(applications, null, 2))
         break
 
       case 'priority':
@@ -57,15 +53,15 @@ export async function POST(req: Request) {
             ? { ...app, priority }
             : app
         )
-        await fs.writeFile(dataFilePath, JSON.stringify(applications, null, 2))
+        await writeFile('applications.json', JSON.stringify(applications, null, 2))
         break
 
       case 'archive':
         const toArchive = applications.filter(app => applicationIds.includes(app.id))
         applications = applications.filter(app => !applicationIds.includes(app.id))
         archived.push(...toArchive.map(app => ({ ...app, archivedAt: new Date().toISOString() })))
-        await fs.writeFile(dataFilePath, JSON.stringify(applications, null, 2))
-        await fs.writeFile(archiveFilePath, JSON.stringify(archived, null, 2))
+        await writeFile('applications.json', JSON.stringify(applications, null, 2))
+        await writeFile('archived_applications.json', JSON.stringify(archived, null, 2))
         break
 
       default:

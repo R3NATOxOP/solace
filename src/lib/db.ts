@@ -49,10 +49,45 @@ export async function getCollection<T = any>(name: string): Promise<Collection<T
 /**
  * Generic function to get all items from a collection (replaces JSON file read)
  */
+/**
+ * Helper to make MongoDB documents JSON serializable (converts ObjectId to string)
+ */
+function serializeData(data: any): any {
+  if (!data) return data
+  if (Array.isArray(data)) return data.map(serializeData)
+  if (typeof data === 'object') {
+    const serialized = { ...data }
+    if (serialized._id) serialized._id = serialized._id.toString()
+    // Recursively handle nested objects
+    Object.keys(serialized).forEach(key => {
+      if (typeof serialized[key] === 'object') {
+        serialized[key] = serializeData(serialized[key])
+      }
+    })
+    return serialized
+  }
+  return data
+}
+
 export async function dbRead<T = any>(collectionName: string): Promise<T[]> {
   try {
     const collection = await getCollection(collectionName)
-    return collection.find({}).toArray() as any
+    const data = await collection.find({}).toArray() as any
+    
+    if (data && data.length > 0) {
+      return serializeData(data)
+    }
+
+    // Fallback to filesystem if DB is empty
+    try {
+      const filePath = path.join(process.cwd(), 'data', `${collectionName}.json`)
+      const content = await fs.readFile(filePath, 'utf-8')
+      const fileData = JSON.parse(content)
+      const arrayData = Array.isArray(fileData) ? fileData : [fileData]
+      return serializeData(arrayData)
+    } catch {
+      return []
+    }
   } catch (error) {
     console.error(`Error reading from collection ${collectionName}:`, error)
     return []
