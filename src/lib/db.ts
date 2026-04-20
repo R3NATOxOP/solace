@@ -22,6 +22,11 @@ export async function dbRead<T = any>(collectionName: string): Promise<T[]> {
       .eq('key', collectionName)
       .single()
 
+    console.log(`[DB] Reading ${collectionName}:`, { 
+      found: !!data, 
+      error: error ? error.message : 'none' 
+    })
+
     if (error) {
       if (error.code === 'PGRST116') { // Not found
         // Fallback to filesystem if not in DB
