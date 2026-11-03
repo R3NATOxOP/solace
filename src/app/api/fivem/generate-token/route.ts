@@ -59,10 +59,13 @@ export async function POST(request: NextRequest) {
     });
 
     // Get FiveM server IP from environment
-    const fivemServerIp = process.env.FIVEM_SERVER_IP || 'localhost:30120';
+    const fivemServerIp = (process.env.FIVEM_SERVER_IP || 'localhost:30120').replace('http://', '').replace('https://', '');
+    
+    // Construct the URL - some FiveM versions prefer the query param, others a slash
     const connectUrl = `fivem://connect/${fivemServerIp}?token=${token}`;
 
-    console.log(`[FIVEM QUEUE] Generated token for ${username} (${discordId})`);
+    console.log(`[FIVEM QUEUE] SUCCESS: Generated token ${token} for ${username}`);
+    console.log(`[FIVEM QUEUE] Redirecting to: ${connectUrl}`);
 
     return NextResponse.json({
       success: true,
